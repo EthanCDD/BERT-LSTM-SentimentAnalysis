@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--freeze',
                     help = 'Freeze BERT or not',
                     type = str2bool,
-                    default = False)
+                    default = True)
 parser.add_argument('--nlayer',
                     help = 'The number of LSTM layers',
                     type = int,
@@ -54,6 +54,7 @@ parser.add_argument('--kept_prob_dropout',
                     default = 1)
 parser.add_argument('--learning_rate',
                     help = 'learning rate',
+                    type = float,
                     default = 0.0005)
 parser.add_argument('--save_path',
                     help = 'Save path',
@@ -73,16 +74,19 @@ def data_loading(train_text, test_text, train_target, test_target):
     return train_data, test_data, len_train
 
 def imdb_run():
+    args = parser.parse_args()
+
     data = args.data
     freeze = args.freeze
     nlayer = args.nlayer
     kept_prob = args.kept_prob_dropout
     bert_lstm_save_path=args.save_path
+    learning_rate = args.learning_rate
     if data.lower() == 'imdb':
         data_path = 'aclImdb'
         
     
-    bert = BertModel.pretrained('bert-base-uncased')
+    bert = BertModel.from_pretrained('bert-base-uncased')
     
     max_len = 250
     max_vocab = bert.config.to_dict()['vocab_size']-3
@@ -102,14 +106,14 @@ def imdb_run():
     
     
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    BatchSize = int(length_train/20)
+    BatchSize = int(length_train/100)
     train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
     test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
 
     model = bert_lstm(bert, 2, False, nlayer, 128, freeze, kept_prob)
     model.to(device)
     
-    learning_rate = args.learning_rate
+    
     criterion = nn.CrossEntropyLoss()
     optimiser = torch.optim.AdamW([cont for cont in model.parameters() if cont.requires_grad], lr = learning_rate)
     
@@ -132,7 +136,8 @@ def imdb_run():
         seqs = seqs.type(torch.LongTensor)
         args = torch.argsort(length, descending = True)
         length = length[args]
-        seqs = seqs[args][:, length[0]]
+        seqs = seqs[args][:, 0:length[0]]
+        
         target = target[args].type(torch.LongTensor)
         optimiser.zero_grad()
         output = model(seqs, length)
@@ -144,7 +149,7 @@ def imdb_run():
         train_targets = torch.cat((train_targets, target.type(torch.float).cpu()))
         train_loss.append(loss)
         
-        if batch_index % 100 == 0:
+        if batch_index % 10 == 0:
           print('Train Batch:{}, Train Loss:{:.4f}.'.format(batch_index, loss.item()))
     
       train_accuracy = model.evaluate_accuracy(train_pred.detach().numpy(), train_targets.detach().numpy())
@@ -166,7 +171,7 @@ def imdb_run():
           test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
           loss = criterion(output, target)
           test_loss.append(loss.item())
-          if batch_index % 30 == 0:
+          if batch_index % 10 == 0:
             print('Test Batch:{}, Test Loss:{:.4f}.'.format(batch_index, loss.item()))
         accuracy = model.evaluate_accuracy(test_pred.numpy(), test_targets.numpy())
         print('Epoch:{}, Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
@@ -184,5 +189,4 @@ def imdb_run():
   
     
 if __name__ == '__main__':
-    args = parser.parse_args()
     imdb_run()

@@ -27,8 +27,8 @@ class pre_processing(object):
 
     train_pos_files = [os.path.join(self.train_path_pos, i) for i in os.listdir(self.train_path_pos) if i.endswith('.txt')]
     train_neg_files = [os.path.join(self.train_path_neg, i) for i in os.listdir(self.train_path_neg) if i.endswith('.txt')]
-    test_pos_files = [os.path.join(self.train_path_pos, i) for i in os.listdir(self.train_path_pos) if i.endswith('.txt')]
-    test_neg_files = [os.path.join(self.train_path_neg, i) for i in os.listdir(self.train_path_pos) if i.endswith('.txt')]
+    test_pos_files = [os.path.join(self.test_path_pos, i) for i in os.listdir(self.test_path_pos) if i.endswith('.txt')]
+    test_neg_files = [os.path.join(self.test_path_neg, i) for i in os.listdir(self.test_path_neg) if i.endswith('.txt')]
 
     train_pos_seqs = [open(i).read().lower() for i in train_pos_files]
     test_pos_seqs = [open(i).read().lower() for i in test_pos_files]
@@ -38,7 +38,7 @@ class pre_processing(object):
     self.train_pos_tokens = [re.sub(r"[^A-Za-z0-9_']", ' ', seq) for seq in train_pos_seqs]
     self.train_pos_labels = np.ones((1, len(self.train_pos_tokens)))
     self.train_neg_tokens = [re.sub(r"[^A-Za-z0-9_']", ' ', seq) for seq in train_neg_seqs]
-    self.train_neg_labels = np.ones((1, len(self.train_neg_tokens)))
+    self.train_neg_labels = np.zeros((1, len(self.train_neg_tokens)))
 
     self.all_train = self.train_pos_tokens + self.train_neg_tokens
     self.all_train = [[token.strip("'") for token in seq.strip().split()] for seq in self.all_train]
@@ -58,7 +58,7 @@ class pre_processing(object):
     self.test_pos_tokens = [re.sub(r"[^A-Za-z0-9_']", ' ', seq) for seq in test_pos_seqs]
     self.test_pos_labels = np.ones((1, len(self.test_pos_tokens)))
     self.test_neg_tokens = [re.sub(r"[^A-Za-z0-9_']", ' ', seq) for seq in test_neg_seqs]
-    self.test_neg_labels = np.ones((1, len(self.test_neg_tokens)))
+    self.test_neg_labels = np.zeros((1, len(self.test_neg_tokens)))
     self.all_test_labels = np.concatenate((self.test_pos_labels,self.test_neg_labels), 1)
     self.all_test = self.test_pos_tokens+self.test_neg_tokens
     self.all_test = [[token.strip("'") for token in seq.strip().split()] for seq in self.all_test]
@@ -113,7 +113,16 @@ class pre_processing(object):
 
   def seqs_num(self):
     self.train_seqs = [[self.words_indx[token] if self.words_indx[token]<self.max_vocab else self.max_vocab for token in seq] for seq in self.all_train]
-    self.test_seqs = [[self.words_indx[token] if self.words_indx[token]<self.max_vocab else self.max_vocab for token in seq] for seq in self.all_test]
+    self.test_seqs = []
+    for seq in self.all_test:
+      tokens = []
+      for token in seq:
+        if (token in self.words_indx) and (self.words_indx[token]<self.max_vocab):
+          tokens.append(self.words_indx[token])
+        else:
+          tokens.append(self.max_vocab)
+      self.test_seqs.append(tokens)
+    # self.test_seqs = [[self.words_indx[token] if (token in self.words_indx) and (self.words_indx[token]<self.max_vocab) else self.max_vocab for token in seq] for seq in self.all_test]
     return self.train_seqs, self.test_seqs
 
   def numerical(self, train_seqs, test_seqs, max_len):
