@@ -5,7 +5,7 @@ Hugging face 'transformers' is required
 pip install transformers
 ```
 
-Then you can clone or download this code by 
+Then you can clone or download this code and download the dataset of IMDB
 ```
 %%shell
 cd ./BERT-LSTM-SentimentAnalysis
