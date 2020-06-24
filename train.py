@@ -80,6 +80,7 @@ def imdb_run():
     bert_lstm_save_path=args.save_path
     if data.lower() == 'imdb':
         data_path = 'aclImdb'
+        
     
     bert = BertModel.pretrained('bert-base-uncased')
     
@@ -131,7 +132,7 @@ def imdb_run():
         seqs = seqs.type(torch.LongTensor)
         args = torch.argsort(length, descending = True)
         length = length[args]
-        seqs = seqs[args]
+        seqs = seqs[args][:, length[0]]
         target = target[args].type(torch.LongTensor)
         optimiser.zero_grad()
         output = model(seqs, length)
