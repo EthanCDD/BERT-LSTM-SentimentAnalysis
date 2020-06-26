@@ -26,9 +26,10 @@ class bert_lstm(nn.Module):
     self.fc = nn.Linear(hidden_size, output_size)
     self.dropout = nn.Dropout(1-kept_prob)
     self.softmax = nn.Softmax(1)
-    
+    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
   def forward(self, text, l):
+
     embedding_mat = self.bert(text)[0]
     batch_size, seq_len, emb_dim = embedding_mat.shape
     
@@ -43,14 +44,15 @@ class bert_lstm(nn.Module):
     lstm_output = self.dropout(lstm_output)
     output = self.fc(lstm_output)
     output = self.softmax(output)
+
     return output
 
   def hidden_b(self, batch_size):
     h = torch.zeros(self.n_layer, batch_size, self.hidden_size)
     c = torch.zeros(self.n_layer, batch_size, self.hidden_size)
 
-    h = h.type(torch.float)
-    c = c.type(torch.float)
+    h = h.type(torch.float).to(self.device)
+    c = c.type(torch.float).to(self.device)
     return h, c
 
   def freeze_bert(self):

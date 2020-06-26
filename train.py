@@ -52,6 +52,10 @@ parser.add_argument('--data',
 parser.add_argument('--kept_prob_dropout',
                     help = 'The probability to keep params',
                     default = 1)
+parser.add_argument('--epoches',
+                    help = 'The number of epoches',
+                    type = int
+                    default = 100)
 parser.add_argument('--learning_rate',
                     help = 'learning rate',
                     type = float,
@@ -82,6 +86,8 @@ def imdb_run():
     kept_prob = args.kept_prob_dropout
     bert_lstm_save_path=args.save_path
     learning_rate = args.learning_rate
+    epoches = arg.epoches
+    
     if data.lower() == 'imdb':
         data_path = 'aclImdb'
         
@@ -106,7 +112,8 @@ def imdb_run():
     
     
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    BatchSize = int(length_train/100)
+    print(device)
+    BatchSize = 64#int(length_train/200)
     train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
     test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
 
@@ -116,8 +123,7 @@ def imdb_run():
     
     criterion = nn.CrossEntropyLoss()
     optimiser = torch.optim.AdamW([cont for cont in model.parameters() if cont.requires_grad], lr = learning_rate)
-    
-    epoches = 200
+    bert_lstm_save_path = os.path.join(bert_lstm_save_path, 'best_bert_'+str(kept_prob))
     best_epoch = 0
     best_acc = 0
     patience = 20
@@ -132,14 +138,15 @@ def imdb_run():
     
       model.train()
       for batch_index, (seqs, length, target) in enumerate(train_loader):
-        seqs, target, length = seqs.to(device), target.to(device), length.to(device)
+        
         seqs = seqs.type(torch.LongTensor)
         args = torch.argsort(length, descending = True)
         length = length[args]
         seqs = seqs[args][:, 0:length[0]]
-        
         target = target[args].type(torch.LongTensor)
         optimiser.zero_grad()
+        seqs, target, length = seqs.to(device), target.to(device), length.to(device)
+
         output = model(seqs, length)
         loss = criterion(output, target)
         loss.backward()
@@ -149,7 +156,7 @@ def imdb_run():
         train_targets = torch.cat((train_targets, target.type(torch.float).cpu()))
         train_loss.append(loss)
         
-        if batch_index % 10 == 0:
+        if batch_index % 100 == 0:
           print('Train Batch:{}, Train Loss:{:.4f}.'.format(batch_index, loss.item()))
     
       train_accuracy = model.evaluate_accuracy(train_pred.detach().numpy(), train_targets.detach().numpy())
@@ -159,19 +166,19 @@ def imdb_run():
       model.eval()
       with torch.no_grad():
         for batch_index, (seqs, length, target) in enumerate(test_loader):
-          seqs, target, length = seqs.to(device), target.to(device), length.to(device)
+          
           seqs = seqs.type(torch.LongTensor)
           len_order = torch.argsort(length, descending = True)
           length = length[len_order]
           seqs = seqs[len_order]
           target = target[len_order]
-    
+          seqs, target, length = seqs.to(device), target.to(device), length.to(device)
           output = model(seqs, length)
           test_pred = torch.cat((test_pred, output.cpu()), dim = 0)
           test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
           loss = criterion(output, target)
           test_loss.append(loss.item())
-          if batch_index % 10 == 0:
+          if batch_index % 100 == 0:
             print('Test Batch:{}, Test Loss:{:.4f}.'.format(batch_index, loss.item()))
         accuracy = model.evaluate_accuracy(test_pred.numpy(), test_targets.numpy())
         print('Epoch:{}, Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
