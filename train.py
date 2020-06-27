@@ -51,6 +51,7 @@ parser.add_argument('--data',
                     default = 'IMDB')
 parser.add_argument('--kept_prob_dropout',
                     help = 'The probability to keep params',
+                    type = float,
                     default = 1)
 parser.add_argument('--epoches',
                     help = 'The number of epoches',
@@ -108,11 +109,13 @@ def imdb_run():
     data_processed = pre_processing(data_path, max_vocab)
     tokenizer_selection = 'BERT'
     if tokenizer_selection.lower() != 'bert':
-      data_processed.processing()
-      train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+        data_processed.processing()
+        train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+        print('Self preprocessing')
     else:
-      data_processed.bert_tokenize(tokenizer)
-      train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+        data_processed.bert_tokenize(tokenizer)
+        train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+        print('BERT tokenizer')
     train_text_init, test_text_init = data_processed.numerical(tokenizer, train_sequences, test_sequences, max_len = 250)
     
     
@@ -136,7 +139,7 @@ def imdb_run():
     
     criterion = nn.CrossEntropyLoss()
     optimiser = torch.optim.AdamW([cont for cont in model.parameters() if cont.requires_grad], lr = learning_rate)
-    bert_lstm_save_path = os.path.join(bert_lstm_save_path, 'best_bert_'+str(kept_prob))
+    bert_lstm_save_path = os.path.join(bert_lstm_save_path, 'best_bert_'+str(kept_prob)+'_'+str(learning_rate))
     best_epoch = 0
     best_acc = 0
     patience = 20
