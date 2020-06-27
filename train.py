@@ -11,16 +11,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from torch import nn
-import nltk
-nltk.download('stopwords')
-stopwords = nltk.corpus.stopwords.words('english')
+#import nltk
+#nltk.download('stopwords')
+#stopwords = nltk.corpus.stopwords.words('english')
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 from collections import OrderedDict, defaultdict
 from torch.utils.data import Dataset, DataLoader, Subset
 from keras.preprocessing.sequence import pad_sequences
 from data_sampler import data_infor
 from pre_processing import pre_processing
-from transformers import BertModel
+from transformers import BertModel, BertTokenizer
 from model_lstm_bert import bert_lstm
 import argparse
 
@@ -54,12 +54,15 @@ parser.add_argument('--kept_prob_dropout',
                     default = 1)
 parser.add_argument('--epoches',
                     help = 'The number of epoches',
-                    type = int
+                    type = int,
                     default = 100)
 parser.add_argument('--learning_rate',
                     help = 'learning rate',
                     type = float,
                     default = 0.0005)
+parser.add_argument('--tokenizer',
+                    help = 'Pre-processing tokenizer',
+                    default = 'bert')
 parser.add_argument('--save_path',
                     help = 'Save path',
                     default = '/content/drive/My Drive/Master_Final_Project/Genetic_attack/Code/nlp_adversarial_example_master_pytorch')
@@ -86,19 +89,31 @@ def imdb_run():
     kept_prob = args.kept_prob_dropout
     bert_lstm_save_path=args.save_path
     learning_rate = args.learning_rate
-    epoches = arg.epoches
+    epoches = args.epoches
+    tokenizer_selection = args.tokenizer
     
     if data.lower() == 'imdb':
         data_path = 'aclImdb'
         
     
     bert = BertModel.from_pretrained('bert-base-uncased')
-    
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     max_len = 250
-    max_vocab = bert.config.to_dict()['vocab_size']-3
+#    max_vocab = bert.config.to_dict()['vocab_size']-3
+#    data_processed = pre_processing(data_path, max_vocab)
+#    train_sequences, test_sequences = data_processed.seqs_num()
+#    train_text_init, test_text_init = data_processed.numerical(train_sequences, test_sequences, max_len = max_len)
+
+    max_vocab = 50000
     data_processed = pre_processing(data_path, max_vocab)
-    train_sequences, test_sequences = data_processed.seqs_num()
-    train_text_init, test_text_init = data_processed.numerical(train_sequences, test_sequences, max_len = max_len)
+    tokenizer_selection = 'BERT'
+    if tokenizer_selection.lower() != 'bert':
+      data_processed.processing()
+      train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+    else:
+      data_processed.bert_tokenize(tokenizer)
+      train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
+    train_text_init, test_text_init = data_processed.numerical(tokenizer, train_sequences, test_sequences, max_len = 250)
     
     
     train_text = pad_sequences(train_text_init, maxlen = max_len, padding = 'post')
@@ -109,13 +124,11 @@ def imdb_run():
     train_data, test_data, length_train = data_loading(train_text, test_text, train_target, test_target)
     
     
-    
-    
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
-    BatchSize = 64#int(length_train/200)
-    train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
-    test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True, pin_memory = True)
+    BatchSize = 128#int(length_train/200)
+    train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True)
+    test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True)
 
     model = bert_lstm(bert, 2, False, nlayer, 128, freeze, kept_prob)
     model.to(device)
