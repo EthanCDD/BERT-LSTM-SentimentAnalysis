@@ -23,7 +23,11 @@ class bert_lstm(nn.Module):
                 num_layers = n_layer, 
                 dropout = 1-kept_prob if n_layer>2 else 0,
                 bidirectional = bidirection)
-    self.fc = nn.Linear(hidden_size, output_size)
+    if bidirection == True:
+        bidirect = 2
+    else:
+        bidirect = 1
+    self.fc = nn.Linear(bidirect*hidden_size, output_size)
     self.dropout = nn.Dropout(1-kept_prob)
     self.softmax = nn.Softmax(1)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -33,11 +37,11 @@ class bert_lstm(nn.Module):
     embedding_mat = self.bert(text)[0]
     batch_size, seq_len, emb_dim = embedding_mat.shape
     
-    h_0, c_0 = self.hidden_b(batch_size)
+#    h_0, c_0 = self.hidden_b(batch_size)
     bert_seqs = embedding_mat.permute(1,0,2)
     
     packed_seqs = pack_padded_sequence(bert_seqs, l)
-    output, (h,c) = self.lstm(packed_seqs, (h_0, c_0))
+    output, (h,c) = self.lstm(packed_seqs)
     output = pad_packed_sequence(output)
     
     lstm_output = torch.mean(output[0], dim = 0)
@@ -47,13 +51,13 @@ class bert_lstm(nn.Module):
 
     return output
 
-  def hidden_b(self, batch_size):
-    h = torch.zeros(self.n_layer, batch_size, self.hidden_size)
-    c = torch.zeros(self.n_layer, batch_size, self.hidden_size)
-
-    h = h.type(torch.float).to(self.device)
-    c = c.type(torch.float).to(self.device)
-    return h, c
+#  def hidden_b(self, batch_size):
+#    h = torch.zeros(self.n_layer, batch_size, self.hidden_size)
+#    c = torch.zeros(self.n_layer, batch_size, self.hidden_size)
+#
+#    h = h.type(torch.float).to(self.device)
+#    c = c.type(torch.float).to(self.device)
+#    return h, c
 
   def freeze_bert(self):
     for cont in self.bert.parameters():

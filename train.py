@@ -190,7 +190,7 @@ def imdb_run():
           target = target[len_order]
           seqs, target, length = seqs.to(device), target.to(device), length.to(device)
           output = model(seqs, length)
-          test_pred = torch.cat((test_pred, output.cpu()), dim = 0)
+          test_pred = torch.cat((test_pred, output.type(torch.float).cpu()), dim = 0)
           test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
           loss = criterion(output, target)
           test_loss.append(loss.item())
