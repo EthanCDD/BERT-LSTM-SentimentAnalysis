@@ -61,6 +61,10 @@ parser.add_argument('--learning_rate',
                     help = 'learning rate',
                     type = float,
                     default = 0.0005)
+parser.add_argument('--bidirection', 
+                    help = 'LSTM bidirection',
+                    type = str2bool,
+                    default = False)
 parser.add_argument('--tokenizer',
                     help = 'Pre-processing tokenizer',
                     default = 'bert')
@@ -107,7 +111,7 @@ def imdb_run():
 
     max_vocab = 50000
     data_processed = pre_processing(data_path, max_vocab)
-    tokenizer_selection = 'BERT'
+    
     if tokenizer_selection.lower() != 'bert':
         data_processed.processing()
         train_sequences, test_sequences = data_processed.bert_indx(tokenizer)
@@ -132,8 +136,8 @@ def imdb_run():
     BatchSize = 128#int(length_train/200)
     train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True)
     test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True)
-
-    model = bert_lstm(bert, 2, False, nlayer, 128, freeze, kept_prob)
+    bidirection = args.bidirection
+    model = bert_lstm(bert, 2, bidirection, nlayer, 128, freeze, kept_prob)
     model.to(device)
     
     
