@@ -143,7 +143,7 @@ def imdb_run():
     
     criterion = nn.CrossEntropyLoss()
     optimiser = torch.optim.AdamW([cont for cont in model.parameters() if cont.requires_grad], lr = learning_rate)
-    bert_lstm_save_path = os.path.join(bert_lstm_save_path, 'best_bert_'+str(kept_prob)+'_'+str(learning_rate))
+    bert_lstm_save_path = os.path.join(bert_lstm_save_path, 'best_bert_'+str(kept_prob)+'_'+str(learning_rate)+'_'+str(tokenizer_selection))
     best_epoch = 0
     best_acc = 0
     patience = 20
@@ -191,7 +191,7 @@ def imdb_run():
           len_order = torch.argsort(length, descending = True)
           length = length[len_order]
           seqs = seqs[len_order]
-          target = target[len_order]
+          target = target[len_order].type(torch.LongTensor)
           seqs, target, length = seqs.to(device), target.to(device), length.to(device)
           output = model(seqs, length)
           test_pred = torch.cat((test_pred, output.type(torch.float).cpu()), dim = 0)

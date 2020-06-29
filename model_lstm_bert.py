@@ -37,7 +37,6 @@ class bert_lstm(nn.Module):
     embedding_mat = self.bert(text)[0]
     batch_size, seq_len, emb_dim = embedding_mat.shape
     
-#    h_0, c_0 = self.hidden_b(batch_size)
     bert_seqs = embedding_mat.permute(1,0,2)
     
     packed_seqs = pack_padded_sequence(bert_seqs, l)
@@ -51,13 +50,6 @@ class bert_lstm(nn.Module):
 
     return output
 
-#  def hidden_b(self, batch_size):
-#    h = torch.zeros(self.n_layer, batch_size, self.hidden_size)
-#    c = torch.zeros(self.n_layer, batch_size, self.hidden_size)
-#
-#    h = h.type(torch.float).to(self.device)
-#    c = c.type(torch.float).to(self.device)
-#    return h, c
 
   def freeze_bert(self):
     for cont in self.bert.parameters():
