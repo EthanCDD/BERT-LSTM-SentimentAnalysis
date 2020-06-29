@@ -10,7 +10,7 @@ from torch import nn
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
 class bert_lstm(nn.Module):
-  def __init__(self, bert, output_size, bidirection, n_layer, hidden_size, freeze=True, kept_prob = 1):
+  def __init__(self, bert, output_size, bidirection, n_layer, hidden_size, freeze, kept_prob):
     super().__init__()
     self.n_layer = n_layer
     self.hidden_size = hidden_size
@@ -21,7 +21,7 @@ class bert_lstm(nn.Module):
     self.lstm = nn.LSTM( input_size=embedding_size,
                 hidden_size=hidden_size, 
                 num_layers = n_layer, 
-                dropout = 1-kept_prob if n_layer>2 else 0,
+#                dropout = 1-kept_prob if n_layer>2 else 0,
                 bidirectional = bidirection)
     if bidirection == True:
         bidirect = 2
@@ -38,7 +38,7 @@ class bert_lstm(nn.Module):
     batch_size, seq_len, emb_dim = embedding_mat.shape
     
     bert_seqs = embedding_mat.permute(1,0,2)
-    
+    bert_seqs = self.dropout(bert_seqs)
     packed_seqs = pack_padded_sequence(bert_seqs, l)
     output, (h,c) = self.lstm(packed_seqs)
     output = pad_packed_sequence(output)

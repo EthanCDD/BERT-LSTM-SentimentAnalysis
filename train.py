@@ -6,7 +6,7 @@ Created on Wed Jun 24 17:01:50 2020
 """
 
 import os
-import re
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -23,6 +23,10 @@ from pre_processing import pre_processing
 from transformers import BertModel, BertTokenizer
 from model_lstm_bert import bert_lstm
 import argparse
+
+SEED = 1234
+random.seed(SEED)
+np.random.seed(SEED)
 
 def str2bool(string):
     if isinstance(string, bool):
@@ -77,13 +81,16 @@ def data_loading(train_text, test_text, train_target, test_target):
     dataset = data_infor(train_text, train_target)
     len_train = len(dataset)
     indx = list(range(len_train))
-    train_data = Subset(dataset, indx)
+    train_indx = random.sample(indx, int(len_train*0.8))
+    vali_indx = [i for i in indx if i not in train_indx]
+    train_data = Subset(dataset, train_indx)
+    vali_data = Subset(dataset, vali_indx)
     
-    dataset = data_infor(test_text, test_target)
-    len_test = len(dataset)
-    indx = list(range(len_test))
-    test_data = Subset(dataset, indx)
-    return train_data, test_data, len_train
+#    dataset = data_infor(test_text, test_target)
+#    len_test = len(dataset)
+#    indx = list(range(len_test))
+#    test_data = Subset(dataset, indx)
+    return train_data, vali_data, len_train
 
 def imdb_run():
     args = parser.parse_args()
@@ -128,14 +135,14 @@ def imdb_run():
     train_target = data_processed.all_train_labels
     test_target = data_processed.all_test_labels
     
-    train_data, test_data, length_train = data_loading(train_text, test_text, train_target, test_target)
+    train_data, vali_data, length_train = data_loading(train_text, test_text, train_target, test_target)
     
     
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
     BatchSize = 128#int(length_train/200)
     train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True)
-    test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True)
+    vali_loader = DataLoader(vali_data, batch_size = BatchSize, shuffle = True)
     bidirection = args.bidirection
     model = bert_lstm(bert, 2, bidirection, nlayer, 128, freeze, kept_prob)
     model.to(device)
@@ -185,7 +192,7 @@ def imdb_run():
     
       model.eval()
       with torch.no_grad():
-        for batch_index, (seqs, length, target) in enumerate(test_loader):
+        for batch_index, (seqs, length, target) in enumerate(vali_loader):
           
           seqs = seqs.type(torch.LongTensor)
           len_order = torch.argsort(length, descending = True)
@@ -199,9 +206,9 @@ def imdb_run():
           loss = criterion(output, target)
           test_loss.append(loss.item())
           if batch_index % 100 == 0:
-            print('Test Batch:{}, Test Loss:{:.4f}.'.format(batch_index, loss.item()))
+            print('Vali Batch:{}, Vali Loss:{:.4f}.'.format(batch_index, loss.item()))
         accuracy = model.evaluate_accuracy(test_pred.numpy(), test_targets.numpy())
-        print('Epoch:{}, Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
+        print('Epoch:{}, Vali Accuracy:{:.4f}, Vali Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
         # best save
         if accuracy > best_acc:
           best_acc = accuracy
