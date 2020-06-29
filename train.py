@@ -86,11 +86,11 @@ def data_loading(train_text, test_text, train_target, test_target):
     train_data = Subset(dataset, train_indx)
     vali_data = Subset(dataset, vali_indx)
     
-#    dataset = data_infor(test_text, test_target)
-#    len_test = len(dataset)
-#    indx = list(range(len_test))
-#    test_data = Subset(dataset, indx)
-    return train_data, vali_data, len_train
+    dataset = data_infor(test_text, test_target)
+    len_test = len(dataset)
+    indx = list(range(len_test))
+    test_data = Subset(dataset, indx)
+    return train_data, vali_data, test_data
 
 def imdb_run():
     args = parser.parse_args()
@@ -135,7 +135,7 @@ def imdb_run():
     train_target = data_processed.all_train_labels
     test_target = data_processed.all_test_labels
     
-    train_data, vali_data, length_train = data_loading(train_text, test_text, train_target, test_target)
+    train_data, vali_data, test_data = data_loading(train_text, test_text, train_target, test_target)
     
     
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -143,6 +143,7 @@ def imdb_run():
     BatchSize = 128#int(length_train/200)
     train_loader = DataLoader(train_data, batch_size = BatchSize, shuffle = True)
     vali_loader = DataLoader(vali_data, batch_size = BatchSize, shuffle = True)
+    test_loader = DataLoader(test_data, batch_size = BatchSize, shuffle = True)
     bidirection = args.bidirection
     model = bert_lstm(bert, 2, bidirection, nlayer, 128, freeze, kept_prob)
     model.to(device)
@@ -220,6 +221,26 @@ def imdb_run():
           print('Best epoch: {}, Best accuracy: {:.4f}.'.format(best_epoch, best_acc))
           print('\n\n')
           break
+      
+    model.load_state_dict(torch.load(bert_lstm_save_path))
+    model.eval()
+    with torch.no_grad():
+      for batch_index, (seqs, length, target) in enumerate(test_loader):
+      
+        seqs = seqs.type(torch.LongTensor)
+        len_order = torch.argsort(length, descending = True)
+        length = length[len_order]
+        seqs = seqs[len_order]
+        target = target[len_order].type(torch.LongTensor)
+        seqs, target, length = seqs.to(device), target.to(device), length.to(device)
+        output = model(seqs, length)
+        test_pred = torch.cat((test_pred, output.type(torch.float).cpu()), dim = 0)
+        test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
+        loss = criterion(output, target)
+        test_loss.append(loss.item())
+      accuracy = model.evaluate_accuracy(test_pred.numpy(), test_targets.numpy())
+      print('Epoch:{}, Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
+      
   
     
 if __name__ == '__main__':
