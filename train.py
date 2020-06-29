@@ -239,7 +239,7 @@ def imdb_run():
         loss = criterion(output, target)
         test_loss.append(loss.item())
       accuracy = model.evaluate_accuracy(test_pred.numpy(), test_targets.numpy())
-      print('Epoch:{}, Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(epoch, accuracy, sum(test_loss)/len(test_loss)))
+      print('Test Accuracy:{:.4f}, Test Mean loss:{:.4f}.'.format(accuracy, sum(test_loss)/len(test_loss)))
       
   
     
