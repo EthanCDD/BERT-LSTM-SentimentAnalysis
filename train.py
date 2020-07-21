@@ -175,12 +175,12 @@ def imdb_run():
         optimiser.zero_grad()
         seqs, target, length = seqs.to(device), target.to(device), length.to(device)
 
-        output = model(seqs, length)
+        output, pred_out = model(seqs, length, True)
         loss = criterion(output, target)
         loss.backward()
         optimiser.step()
     
-        train_pred = torch.cat((train_pred, output.cpu()), dim = 0)
+        train_pred = torch.cat((train_pred, pred_out.cpu()), dim = 0)
         train_targets = torch.cat((train_targets, target.type(torch.float).cpu()))
         train_loss.append(loss)
         
@@ -201,8 +201,8 @@ def imdb_run():
           seqs = seqs[len_order]
           target = target[len_order].type(torch.LongTensor)
           seqs, target, length = seqs.to(device), target.to(device), length.to(device)
-          output = model(seqs, length)
-          test_pred = torch.cat((test_pred, output.type(torch.float).cpu()), dim = 0)
+          output, pred_out = model(seqs, length, False)
+          test_pred = torch.cat((test_pred, pred_out.type(torch.float).cpu()), dim = 0)
           test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
           loss = criterion(output, target)
           test_loss.append(loss.item())
@@ -233,8 +233,8 @@ def imdb_run():
         seqs = seqs[len_order]
         target = target[len_order].type(torch.LongTensor)
         seqs, target, length = seqs.to(device), target.to(device), length.to(device)
-        output = model(seqs, length)
-        test_pred = torch.cat((test_pred, output.type(torch.float).cpu()), dim = 0)
+        output, pred_out = model(seqs, length, False)
+        test_pred = torch.cat((test_pred, pred_out.type(torch.float).cpu()), dim = 0)
         test_targets = torch.cat((test_targets, target.type(torch.float).cpu()))
         loss = criterion(output, target)
         test_loss.append(loss.item())
