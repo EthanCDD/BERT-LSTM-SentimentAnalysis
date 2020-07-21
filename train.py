@@ -110,7 +110,7 @@ def imdb_run():
     
     bert = BertModel.from_pretrained('bert-base-uncased')
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    max_len = 250
+    max_len = 100
 #    max_vocab = bert.config.to_dict()['vocab_size']-3
 #    data_processed = pre_processing(data_path, max_vocab)
 #    train_sequences, test_sequences = data_processed.seqs_num()
